@@ -91,7 +91,7 @@ Parâmetros aceitos:
 - `mu`: valor do momento negativo, de `0.0` a `1.0`.
 - `interval`: intervalo usado para atualizar a referência de arrependimentos, de `1` a `10000`.
 - `seed`: semente da simulação, de `0` a `1000000`.
-- `mode`: `educational` ou `paper`.
+- `mode`: `educational` ou `paper`. Quando omitido, o backend usa `paper`.
 
 Quando `mode=educational`, a rota chama `train_kuhn(config)`.
 
@@ -323,7 +323,7 @@ iterations: 2000
 mu: 0.01
 interval: 200
 seed: 42
-mode: "educational"
+mode: "paper"
 delayMs: 120
 ```
 

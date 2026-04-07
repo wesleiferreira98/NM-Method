@@ -24,7 +24,7 @@ Além dos arquivos de pesquisa, o repositório inclui uma aplicação separada e
 - `apps/backend/`: API em Python/FastAPI para simular Kuhn Poker com CFR e momento negativo.
 - `apps/frontend/`: interface React/Vite para visualizar cartas, parâmetros de treinamento, curva de exploitability e estratégia aprendida.
 
-Essa separação evita misturar a camada de produto com os arquivos originais da solução do paper. A aplicação visual usa, no modo didático, a adaptação `NM-Method/Kuhn_Poker_CFR-style_MoCFR.py` por meio de `apps/backend/kuhn_service.py`. Ela também oferece um modo opcional chamado `Paper fork`, que chama `NM-Method/MoCFR.py` por meio de `apps/backend/paper_bridge.py`, sem alterar os arquivos originais de pesquisa.
+Essa separação evita misturar a camada de produto com os arquivos originais da solução do paper. A aplicação visual usa por padrão o modo `Paper fork`, que chama `NM-Method/MoCFR.py` por meio de `apps/backend/paper_bridge.py`, sem alterar os arquivos originais de pesquisa. O modo didático continua disponível e usa a adaptação `NM-Method/Kuhn_Poker_CFR-style_MoCFR.py` por meio de `apps/backend/kuhn_service.py`.
 
 ### Dependências
 
@@ -123,7 +123,7 @@ In addition to the research files, the repository includes a separate applicatio
 - `apps/backend/`: Python/FastAPI API for simulating Kuhn Poker with CFR and negative momentum.
 - `apps/frontend/`: React/Vite interface for visualizing cards, training parameters, the exploitability curve, and the learned strategy.
 
-This separation avoids mixing the product layer with the original paper solution files. In educational mode, the visual application uses the `NM-Method/Kuhn_Poker_CFR-style_MoCFR.py` adaptation through `apps/backend/kuhn_service.py`. It also provides an optional `Paper fork` mode that calls `NM-Method/MoCFR.py` through `apps/backend/paper_bridge.py`, without modifying the original research files.
+This separation avoids mixing the product layer with the original paper solution files. By default, the visual application uses the `Paper fork` mode, which calls `NM-Method/MoCFR.py` through `apps/backend/paper_bridge.py`, without modifying the original research files. The educational mode remains available and uses the `NM-Method/Kuhn_Poker_CFR-style_MoCFR.py` adaptation through `apps/backend/kuhn_service.py`.
 
 ### Dependencies
 

@@ -257,7 +257,7 @@ def train_with_config(config):
             avg = average_strategy()
             timeline.append({
                 "iteration": t,
-                "exploitability": round(float(compute_exploitability(avg)), 6),
+                "exploitability": float(compute_exploitability(avg)),
             })
 
     avg = average_strategy()
@@ -267,8 +267,25 @@ def train_with_config(config):
         "exploitability": timeline[-1]["exploitability"],
     }
 
+def comparison_summary(baseline_result):
+    return {
+        "label": "CFR sem momento",
+        "timeline": baseline_result["timeline"],
+        "finalExploitability": baseline_result["exploitability"],
+        "decisions": strategy_to_decisions(baseline_result["average_strategy"]),
+    }
+
 def iter_structured_snapshots(config):
     global N_CARDS, ITERATIONS, INTERVAL, cards
+
+    baseline_config = RunConfig(
+        iterations=config.iterations,
+        mu=0.0,
+        interval=config.interval,
+        seed=config.seed,
+        n_cards=config.n_cards,
+    )
+    baseline = comparison_summary(train_with_config(baseline_config))
 
     random.seed(config.seed)
     regret.clear()
@@ -296,7 +313,10 @@ def iter_structured_snapshots(config):
 
         if t == 1 or t % checkpoint_every == 0 or t == ITERATIONS:
             avg = average_strategy()
-            exploitability = round(float(compute_exploitability(avg)), 6)
+            exploitability = float(compute_exploitability(avg))
+            comparison_timeline = [
+                point for point in baseline["timeline"] if point["iteration"] <= t
+            ]
             timeline.append({
                 "iteration": t,
                 "exploitability": exploitability,
@@ -313,6 +333,11 @@ def iter_structured_snapshots(config):
                     "nCards": config.n_cards,
                 },
                 "timeline": timeline[:],
+                "comparison": {
+                    **baseline,
+                    "timeline": comparison_timeline,
+                    "finalExploitability": comparison_timeline[-1]["exploitability"],
+                },
                 "finalExploitability": exploitability,
                 "decisions": strategy_to_decisions(avg),
                 "progress": round(t / ITERATIONS, 4),
@@ -345,6 +370,14 @@ def strategy_to_decisions(avg_strategy):
 
 def run_structured(config):
     result = train_with_config(config)
+    baseline_config = RunConfig(
+        iterations=config.iterations,
+        mu=0.0,
+        interval=config.interval,
+        seed=config.seed,
+        n_cards=config.n_cards,
+    )
+    baseline = comparison_summary(train_with_config(baseline_config))
     decisions = strategy_to_decisions(result["average_strategy"])
     return {
         "game": "Kuhn Poker",
@@ -358,6 +391,7 @@ def run_structured(config):
             "nCards": config.n_cards,
         },
         "timeline": result["timeline"],
+        "comparison": baseline,
         "finalExploitability": result["exploitability"],
         "decisions": decisions,
         "explanation": {

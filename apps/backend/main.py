@@ -45,7 +45,7 @@ def simulate(
     mu: float = Query(default=0.01, ge=0.0, le=1.0),
     interval: int = Query(default=200, ge=1, le=10000),
     seed: int = Query(default=42, ge=0, le=1_000_000),
-    mode: str = Query(default="educational", pattern="^(educational|paper)$"),
+    mode: str = Query(default="paper", pattern="^(educational|paper)$"),
 ) -> dict:
     config = SimulationConfig(
         iterations=iterations,
@@ -71,7 +71,7 @@ def simulate_stream(
     mu: float = Query(default=0.01, ge=0.0, le=1.0),
     interval: int = Query(default=200, ge=1, le=10000),
     seed: int = Query(default=42, ge=0, le=1_000_000),
-    mode: str = Query(default="educational", pattern="^(educational|paper)$"),
+    mode: str = Query(default="paper", pattern="^(educational|paper)$"),
     delay_ms: int = Query(default=120, ge=0, le=2000),
 ):
     config = SimulationConfig(

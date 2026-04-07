@@ -30,8 +30,8 @@ Na lateral esquerda fica o painel em que o usuário controla a simulação.
 
 A primeira escolha é o **modo da simulação**:
 
-- **Didático**: usa a implementação adaptada para a aplicação visual. É o modo principal da interface, pensado para mostrar os resultados de forma mais direta.
-- **Paper fork**: usa a implementação baseada no código do paper, quando as dependências necessárias estão disponíveis no ambiente.
+- **Paper fork**: usa a implementação baseada no código do paper. É o modo padrão da interface.
+- **Didático**: usa a implementação adaptada para a aplicação visual e continua disponível para comparação.
 
 Abaixo da escolha de modo, a página mostra uma mensagem explicando qual fonte está sendo usada. Se o modo `Paper fork` não estiver disponível, a interface informa isso e mostra o motivo.
 

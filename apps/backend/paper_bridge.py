@@ -92,14 +92,8 @@ def _extract_kuhn_decisions(policy) -> list[dict]:
     return decisions
 
 
-def run_paper_mocfr(config: SimulationConfig) -> dict:
-    availability = check_paper_availability()
-    if not availability.available:
-        raise RuntimeError(availability.reason or "Codigo do paper indisponivel.")
-
-    MoCFR, pyspiel, exploitability = _load_paper_modules()
-    game = pyspiel.load_game("kuhn_poker")
-    solver = MoCFR.CFRPlusSolver(game, itv=config.interval, mu=config.mu)
+def _run_paper_training(MoCFR, exploitability, game, config: SimulationConfig, mu: float) -> tuple[list[dict], object]:
+    solver = MoCFR.CFRPlusSolver(game, itv=config.interval, mu=mu)
     checkpoint_every = max(1, config.iterations // CHECKPOINTS)
     timeline = []
 
@@ -110,15 +104,37 @@ def run_paper_mocfr(config: SimulationConfig) -> dict:
             timeline.append(
                 {
                     "iteration": iteration,
-                    "exploitability": round(float(conv), 6),
+                    "exploitability": float(conv),
                 }
             )
 
-    current_policy = solver.current_policy()
+    return timeline, solver.current_policy()
+
+
+def _comparison_summary(timeline: list[dict], decisions: list[dict]) -> dict:
+    return {
+        "label": "CFR",
+        "primaryLabel": "MoCFR",
+        "mode": "paper",
+        "timeline": timeline,
+        "finalExploitability": timeline[-1]["exploitability"],
+        "decisions": decisions,
+    }
+
+
+def run_paper_mocfr(config: SimulationConfig) -> dict:
+    availability = check_paper_availability()
+    if not availability.available:
+        raise RuntimeError(availability.reason or "Codigo do paper indisponivel.")
+
+    MoCFR, pyspiel, exploitability = _load_paper_modules()
+    game = pyspiel.load_game("kuhn_poker")
+    baseline_timeline, baseline_policy = _run_paper_training(MoCFR, exploitability, game, config, mu=0.0)
+    timeline, current_policy = _run_paper_training(MoCFR, exploitability, game, config, mu=config.mu)
 
     return {
         "game": "Kuhn Poker",
-        "method": "MoCFR from paper fork",
+        "method": "MoCFR vs CFR from paper fork",
         "source": "paper",
         "config": {
             "iterations": config.iterations,
@@ -127,11 +143,12 @@ def run_paper_mocfr(config: SimulationConfig) -> dict:
             "seed": config.seed,
         },
         "timeline": timeline,
+        "comparison": _comparison_summary(baseline_timeline, _extract_kuhn_decisions(baseline_policy)),
         "finalExploitability": timeline[-1]["exploitability"],
         "decisions": _extract_kuhn_decisions(current_policy),
         "explanation": {
-            "baseline": "Este modo chama o solver MoCFR.CFRPlusSolver do fork do paper.",
-            "negativeMomentum": "O termo de momento negativo e aplicado dentro de NM-Method/MoCFR.py.",
+            "baseline": "Este modo compara MoCFR contra CFR usando o solver MoCFR.CFRPlusSolver do fork do paper.",
+            "negativeMomentum": "MoCFR usa o mu configurado; CFR usa mu=0.0, sem momento negativo.",
             "separation": "A ponte fica em apps/backend/paper_bridge.py e nao altera os arquivos originais de pesquisa.",
         },
     }
@@ -145,24 +162,36 @@ def stream_paper_mocfr(config: SimulationConfig):
     MoCFR, pyspiel, exploitability = _load_paper_modules()
     game = pyspiel.load_game("kuhn_poker")
     solver = MoCFR.CFRPlusSolver(game, itv=config.interval, mu=config.mu)
+    baseline_solver = MoCFR.CFRPlusSolver(game, itv=config.interval, mu=0.0)
     checkpoint_every = max(1, config.iterations // CHECKPOINTS)
     timeline = []
+    comparison_timeline = []
 
     for iteration in range(1, config.iterations + 1):
         solver.evaluate_and_update_policy()
+        baseline_solver.evaluate_and_update_policy()
         if iteration == 1 or iteration % checkpoint_every == 0 or iteration == config.iterations:
             current_policy = solver.current_policy()
+            baseline_policy = baseline_solver.current_policy()
             conv = exploitability.nash_conv(game, current_policy)
-            exploitability_value = round(float(conv), 6)
+            exploitability_value = float(conv)
+            baseline_conv = exploitability.nash_conv(game, baseline_policy)
+            baseline_exploitability = float(baseline_conv)
             timeline.append(
                 {
                     "iteration": iteration,
                     "exploitability": exploitability_value,
                 }
             )
+            comparison_timeline.append(
+                {
+                    "iteration": iteration,
+                    "exploitability": baseline_exploitability,
+                }
+            )
             yield {
                 "game": "Kuhn Poker",
-                "method": "MoCFR from paper fork",
+                "method": "MoCFR vs CFR from paper fork",
                 "source": "paper",
                 "config": {
                     "iterations": config.iterations,
@@ -171,14 +200,22 @@ def stream_paper_mocfr(config: SimulationConfig):
                     "seed": config.seed,
                 },
                 "timeline": timeline[:],
+                "comparison": {
+                    "label": "CFR",
+                    "primaryLabel": "MoCFR",
+                    "mode": "paper",
+                    "timeline": comparison_timeline[:],
+                    "finalExploitability": baseline_exploitability,
+                    "decisions": _extract_kuhn_decisions(baseline_policy),
+                },
                 "finalExploitability": exploitability_value,
                 "decisions": _extract_kuhn_decisions(current_policy),
                 "progress": round(iteration / config.iterations, 4),
                 "currentIteration": iteration,
                 "done": iteration == config.iterations,
                 "explanation": {
-                    "baseline": "Este modo chama o solver MoCFR.CFRPlusSolver do fork do paper.",
-                    "negativeMomentum": "O termo de momento negativo e aplicado dentro de NM-Method/MoCFR.py.",
+                    "baseline": "Este modo compara MoCFR contra CFR usando o solver MoCFR.CFRPlusSolver do fork do paper.",
+                    "negativeMomentum": "MoCFR usa o mu configurado; CFR usa mu=0.0, sem momento negativo.",
                     "separation": "A ponte fica em apps/backend/paper_bridge.py e nao altera os arquivos originais de pesquisa.",
                 },
             }

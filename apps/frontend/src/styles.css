@@ -190,6 +190,11 @@ input[type="range"] {
   color: #ffffff;
 }
 
+.primary-action.secondary {
+  background: #344a40;
+  border-color: #344a40;
+}
+
 .error {
   color: #a82424;
   margin-bottom: 0;
@@ -203,16 +208,22 @@ input[type="range"] {
 .status-row {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
-.status-row div {
+.metric-card {
   background: #f3f7f4;
   border: 1px solid #d7e4dc;
   border-radius: 8px;
   display: grid;
   gap: 8px;
   padding: 16px;
+  position: relative;
+}
+
+.metric-card:focus {
+  outline: 2px solid #0d5734;
+  outline-offset: 2px;
 }
 
 .status-row strong {
@@ -220,6 +231,45 @@ input[type="range"] {
   font-size: 24px;
   line-height: 1.1;
   overflow-wrap: anywhere;
+}
+
+.metric-note {
+  color: #52675c;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.metric-tooltip {
+  background: #10231a;
+  border-radius: 8px;
+  bottom: calc(100% + 10px);
+  box-shadow: 0 12px 30px rgba(13, 31, 22, 0.22);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  left: 12px;
+  line-height: 1.35;
+  max-width: 280px;
+  opacity: 0;
+  padding: 10px 12px;
+  pointer-events: none;
+  position: absolute;
+  transform: translateY(4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+  visibility: hidden;
+  width: max-content;
+  z-index: 10;
+}
+
+.metric-card:hover .metric-tooltip,
+.metric-card:focus .metric-tooltip,
+.tooltip-wrap:hover .metric-tooltip,
+.tooltip-wrap:focus .metric-tooltip,
+.tooltip-wrap:focus-within .metric-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
 }
 
 .progress-track {
@@ -257,7 +307,41 @@ input[type="range"] {
   background: #f6faf7;
   border: 1px solid #d7e4dc;
   border-radius: 8px;
+  display: grid;
+  gap: 8px;
   padding: 10px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: flex-end;
+  padding: 2px 4px 0;
+}
+
+.chart-legend span {
+  align-items: center;
+  color: #344a40;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 7px;
+}
+
+.legend-dot {
+  border-radius: 999px;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.legend-dot.mocfr {
+  background: #0d5734;
+}
+
+.legend-dot.cfr {
+  background: #b86f18;
 }
 
 .chart-frame svg {
@@ -298,9 +382,21 @@ input[type="range"] {
   stroke-width: 4.5;
 }
 
+.chart-line.comparison {
+  stroke: #b86f18;
+  stroke-dasharray: 7 6;
+  stroke-width: 3.5;
+}
+
 .chart-dot {
   fill: #f7faf8;
   stroke: #0d5734;
+  stroke-width: 2;
+}
+
+.chart-dot.comparison {
+  fill: #f7faf8;
+  stroke: #b86f18;
   stroke-width: 2;
 }
 
@@ -320,6 +416,28 @@ input[type="range"] {
   fill: #12211a;
   font-size: 13px;
   font-weight: 800;
+}
+
+.learning-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.learning-card {
+  background: #ffffff;
+  border: 1px solid #c7d7cf;
+  border-radius: 8px;
+  padding: 22px;
+}
+
+.learning-card h2 {
+  margin-bottom: 10px;
+}
+
+.learning-card p {
+  color: #52675c;
+  margin-bottom: 0;
 }
 
 .timeline-panel {
@@ -365,6 +483,41 @@ input[type="range"] {
   justify-content: space-between;
 }
 
+.strategy-title {
+  display: grid;
+  gap: 0;
+  position: relative;
+}
+
+.strategy-title:focus {
+  outline: 2px solid #0d5734;
+  outline-offset: 4px;
+}
+
+.tooltip-wrap {
+  display: inline-flex;
+  position: relative;
+}
+
+.tooltip-wrap .metric-tooltip {
+  left: 0;
+}
+
+.bars .tooltip-wrap {
+  display: block;
+}
+
+.action-legend {
+  color: #52675c;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
+.action-legend strong {
+  color: #0d5734;
+}
+
 .card-picker button {
   font-size: 24px;
   min-width: 64px;
@@ -376,15 +529,41 @@ input[type="range"] {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+.player-decisions {
+  border: 1px solid #d7e4dc;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.player-decisions h3 {
+  color: #0d5734;
+  margin-bottom: 0;
+}
+
 .decision {
   border: 1px solid #d7e4dc;
   border-radius: 8px;
   display: grid;
   gap: 14px;
   padding: 16px;
+  position: relative;
 }
 
-.decision h3 {
+.decision:focus {
+  outline: 2px solid #0d5734;
+  outline-offset: 2px;
+}
+
+.decision:hover > .metric-tooltip,
+.decision:focus > .metric-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.decision h4 {
   margin-bottom: 6px;
 }
 
@@ -418,6 +597,7 @@ input[type="range"] {
   .hero,
   .simulation-grid,
   .details-grid,
+  .learning-grid,
   .status-row {
     grid-template-columns: 1fr;
   }
@@ -440,6 +620,7 @@ input[type="range"] {
   .hero,
   .control-panel,
   .monitor-panel,
+  .learning-card,
   .timeline-panel,
   .strategy-panel {
     padding: 16px;
