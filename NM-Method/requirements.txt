@@ -1,13 +1,15 @@
 absl-py==2.4.0
 contourpy==1.3.3
 cycler==0.12.1
+fastapi==0.135.3
 fonttools==4.62.1
 kiwisolver==1.5.0
 matplotlib==3.10.8
-numpy @ file:///home/builder/.termux-build/python-numpy/src/dist/numpy-2.4.3-cp313-cp313-android_aarch64.whl#sha256=29375a409dbbc19a16b247690013ca4876330c8cb035b03343f06e962f147612
+numpy==2.4.4
 packaging==26.0
 pillow==12.2.0
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
-scipy @ file:///home/builder/.termux-build/python-scipy/src/dist/scipy-1.17.1-cp313-cp313-android_aarch64.whl#sha256=983a3b6ea280209902b8cc8c5c47d881237522224142999ddf2c8e084ffb2db3
+scipy==1.17.1
 six==1.17.0
+uvicorn[standard]==0.44.0

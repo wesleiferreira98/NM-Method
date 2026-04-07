@@ -1,5 +1,6 @@
 import numpy as np
 import random
+from dataclasses import dataclass
 
 # =========================
 # CONFIG
@@ -10,6 +11,27 @@ INTERVAL = 500
 MU = 0.01  # momentum
 
 cards = [str(i) for i in range(1, N_CARDS + 1)]
+CHECKPOINTS = 24
+CARD_LABELS = {
+    "1": "J",
+    "2": "Q",
+    "3": "K",
+}
+ACTION_LABELS = {
+    "": ["check", "bet"],
+    "c": ["check", "bet"],
+    "b": ["call", "fold"],
+    "cb": ["call", "fold"],
+}
+
+
+@dataclass(frozen=True)
+class RunConfig:
+    iterations: int = ITERATIONS
+    mu: float = MU
+    interval: int = INTERVAL
+    seed: int = 42
+    n_cards: int = 3
 
 # =========================
 # STORAGE
@@ -38,6 +60,9 @@ def get_strategy(info, n_actions):
 # =========================
 def card_value(c):
     return int(c)
+
+def card_label(c):
+    return CARD_LABELS.get(c, c)
 
 def terminal_utility(history, c1, c2):
     if history == "cc":
@@ -86,17 +111,18 @@ def cfr(history, c1, c2, p1, p2, mu, ref_regret):
     for i, a in enumerate(actions):
         next_history = history + a
         if player == 0:
-            utils[i] = -cfr(next_history, c1, c2, p1 * strat[i], p2, mu, ref_regret)
+            utils[i] = cfr(next_history, c1, c2, p1 * strat[i], p2, mu, ref_regret)
         else:
-            utils[i] = -cfr(next_history, c1, c2, p1, p2 * strat[i], mu, ref_regret)
+            utils[i] = cfr(next_history, c1, c2, p1, p2 * strat[i], mu, ref_regret)
         node_util += strat[i] * utils[i]
 
     regret_delta = utils - node_util
 
     opp_reach = p2 if player == 0 else p1
     self_reach = p1 if player == 0 else p2
+    player_sign = 1.0 if player == 0 else -1.0
 
-    regret[info] += opp_reach * regret_delta
+    regret[info] += opp_reach * player_sign * regret_delta
     strategy_sum[info] += self_reach * strat
 
     # Momentum (MoCFR)
@@ -125,7 +151,8 @@ def average_strategy():
 # =========================
 def best_response(history, c1, c2, avg_strategy, player):
     if is_terminal(history):
-        return terminal_utility(history, c1, c2)
+        util_p0 = terminal_utility(history, c1, c2)
+        return util_p0 if player == 0 else -util_p0
 
     current = len(history) % 2
     card = c1 if current == 0 else c2
@@ -173,7 +200,7 @@ def compute_exploitability(avg_strategy):
             total += br1 + br2
             count += 1
 
-    return total / count
+    return total / (2 * count)
 
 # =========================
 # TRAIN
@@ -198,6 +225,147 @@ def train(mu):
             print(f"Iter {t} | infosets={len(avg)} | exploitability={exp:.6f}")
 
     return average_strategy()
+
+def train_with_config(config):
+    global N_CARDS, ITERATIONS, INTERVAL, cards
+
+    random.seed(config.seed)
+    regret.clear()
+    strategy_sum.clear()
+
+    N_CARDS = config.n_cards
+    ITERATIONS = config.iterations
+    INTERVAL = config.interval
+    cards = [str(i) for i in range(1, N_CARDS + 1)]
+
+    ref_regret = {}
+    deck = cards[:]
+    checkpoint_every = max(1, ITERATIONS // CHECKPOINTS)
+    timeline = []
+
+    for t in range(1, ITERATIONS + 1):
+        random.shuffle(deck)
+        c1, c2 = deck[0], deck[1]
+
+        cfr("", c1, c2, 1.0, 1.0, config.mu, ref_regret)
+
+        if t % max(1, INTERVAL) == 0:
+            for k in regret:
+                ref_regret[k] = regret[k].copy()
+
+        if t == 1 or t % checkpoint_every == 0 or t == ITERATIONS:
+            avg = average_strategy()
+            timeline.append({
+                "iteration": t,
+                "exploitability": round(float(compute_exploitability(avg)), 6),
+            })
+
+    avg = average_strategy()
+    return {
+        "average_strategy": avg,
+        "timeline": timeline,
+        "exploitability": timeline[-1]["exploitability"],
+    }
+
+def iter_structured_snapshots(config):
+    global N_CARDS, ITERATIONS, INTERVAL, cards
+
+    random.seed(config.seed)
+    regret.clear()
+    strategy_sum.clear()
+
+    N_CARDS = config.n_cards
+    ITERATIONS = config.iterations
+    INTERVAL = config.interval
+    cards = [str(i) for i in range(1, N_CARDS + 1)]
+
+    ref_regret = {}
+    deck = cards[:]
+    checkpoint_every = max(1, ITERATIONS // CHECKPOINTS)
+    timeline = []
+
+    for t in range(1, ITERATIONS + 1):
+        random.shuffle(deck)
+        c1, c2 = deck[0], deck[1]
+
+        cfr("", c1, c2, 1.0, 1.0, config.mu, ref_regret)
+
+        if t % max(1, INTERVAL) == 0:
+            for k in regret:
+                ref_regret[k] = regret[k].copy()
+
+        if t == 1 or t % checkpoint_every == 0 or t == ITERATIONS:
+            avg = average_strategy()
+            exploitability = round(float(compute_exploitability(avg)), 6)
+            timeline.append({
+                "iteration": t,
+                "exploitability": exploitability,
+            })
+            yield {
+                "game": "Kuhn Poker",
+                "method": "Kuhn CFR-style MoCFR",
+                "source": "educational",
+                "config": {
+                    "iterations": config.iterations,
+                    "mu": config.mu,
+                    "interval": config.interval,
+                    "seed": config.seed,
+                    "nCards": config.n_cards,
+                },
+                "timeline": timeline[:],
+                "finalExploitability": exploitability,
+                "decisions": strategy_to_decisions(avg),
+                "progress": round(t / ITERATIONS, 4),
+                "currentIteration": t,
+                "done": t == ITERATIONS,
+                "explanation": {
+                    "baseline": "Este modo chama diretamente a adaptacao Kuhn_Poker_CFR-style_MoCFR.py.",
+                    "negativeMomentum": "O momentum negativo desloca os arrependimentos atuais em direcao a uma referencia periodica.",
+                    "separation": "A aplicacao usa o script adaptado sem acoplar o frontend aos detalhes internos do treinamento.",
+                },
+            }
+
+def strategy_to_decisions(avg_strategy):
+    decisions = []
+
+    for info, strat in sorted(avg_strategy.items()):
+        player, card, history = info
+        best_action = int(np.argmax(strat))
+        decisions.append({
+            "key": f"P{player + 1}:{card_label(card)}:{history or 'inicio'}",
+            "player": player + 1,
+            "card": card_label(card),
+            "history": history or "inicio",
+            "checkCall": round(float(strat[0]), 4),
+            "betRaise": round(float(strat[1]), 4),
+            "recommendedAction": ACTION_LABELS[history][best_action],
+        })
+
+    return decisions
+
+def run_structured(config):
+    result = train_with_config(config)
+    decisions = strategy_to_decisions(result["average_strategy"])
+    return {
+        "game": "Kuhn Poker",
+        "method": "Kuhn CFR-style MoCFR",
+        "source": "educational",
+        "config": {
+            "iterations": config.iterations,
+            "mu": config.mu,
+            "interval": config.interval,
+            "seed": config.seed,
+            "nCards": config.n_cards,
+        },
+        "timeline": result["timeline"],
+        "finalExploitability": result["exploitability"],
+        "decisions": decisions,
+        "explanation": {
+            "baseline": "Este modo chama diretamente a adaptacao Kuhn_Poker_CFR-style_MoCFR.py.",
+            "negativeMomentum": "O momentum negativo desloca os arrependimentos atuais em direcao a uma referencia periodica.",
+            "separation": "A aplicacao usa o script adaptado sem acoplar o frontend aos detalhes internos do treinamento.",
+        },
+    }
 
 # =========================
 # PRINT
