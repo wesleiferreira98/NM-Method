@@ -1,8 +1,8 @@
 # Frontend
 
-Interface React separada dos arquivos originais de pesquisa em `NM-Method/`.
+Interface React/Vite para visualizar a comparação entre `UCTαβ` e `UCT`.
 
-Ela consome a API em `apps/backend` para exibir uma versão visual de Kuhn Poker treinada com momento negativo.
+A tela consome a API em `apps/backend`, mostra o score acumulado, os checkpoints da comparação, o tabuleiro final da última partida e os últimos lances jogados.
 
 ## Execução
 

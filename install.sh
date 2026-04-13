@@ -3,9 +3,6 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON_DIR="$ROOT_DIR/NM-Method"
-REQUIREMENTS_FILE="$PYTHON_DIR/requirements.txt"
-ARM64_REQUIREMENTS_FILE="$PYTHON_DIR/requirements-arm64.txt"
 BACKEND_REQUIREMENTS_FILE="$ROOT_DIR/apps/backend/requirements.txt"
 BACKEND_ARM64_REQUIREMENTS_FILE="$ROOT_DIR/apps/backend/requirements-arm64.txt"
 VENV_DIR="$ROOT_DIR/.venv"
@@ -95,8 +92,7 @@ install_python_environment() {
   local architecture="$2"
   local pip_bin="$VENV_DIR/bin/pip"
   local python_venv_bin="$VENV_DIR/bin/python"
-  local selected_requirements="$REQUIREMENTS_FILE"
-  local selected_backend_requirements="$BACKEND_REQUIREMENTS_FILE"
+  local selected_requirements="$BACKEND_REQUIREMENTS_FILE"
   local tmp_requirements
 
   print_header "Ambiente Python"
@@ -105,12 +101,8 @@ install_python_environment() {
 
   if is_arm64_architecture "$architecture"; then
     print_info "Ambiente ARM64 detectado."
-    if [[ -f "$ARM64_REQUIREMENTS_FILE" ]] && ask_yes_no "Deseja usar requirements-arm64.txt para maior compatibilidade?" "y"; then
-      selected_requirements="$ARM64_REQUIREMENTS_FILE"
-    fi
-
-    if [[ -f "$BACKEND_ARM64_REQUIREMENTS_FILE" ]]; then
-      selected_backend_requirements="$BACKEND_ARM64_REQUIREMENTS_FILE"
+    if [[ -f "$BACKEND_ARM64_REQUIREMENTS_FILE" ]] && ask_yes_no "Deseja usar apps/backend/requirements-arm64.txt para maior compatibilidade?" "y"; then
+      selected_requirements="$BACKEND_ARM64_REQUIREMENTS_FILE"
     fi
   fi
 
@@ -152,17 +144,6 @@ install_python_environment() {
     else
       "$pip_bin" install -r "$selected_requirements"
     fi
-  fi
-
-  if ask_yes_no "Deseja instalar dependencias extras usadas por alguns scripts (open_spiel, wandb, attrs e tqdm)?" "n"; then
-    if is_arm64_architecture "$architecture"; then
-      print_info "Aviso: open_spiel pode falhar em Termux/Debian/proot se nao houver wheel compativel."
-    fi
-    "$pip_bin" install open_spiel wandb attrs tqdm
-  fi
-
-  if [[ -f "$selected_backend_requirements" ]] && ask_yes_no "Deseja instalar as dependencias da API em apps/backend?" "y"; then
-    "$pip_bin" install -r "$selected_backend_requirements"
   fi
 
   print_info "Para ativar o ambiente depois: source .venv/bin/activate"
@@ -235,7 +216,7 @@ main() {
   local architecture
   local python_bin
 
-  print_header "Instalador assistido do NM-Method"
+  print_header "Instalador assistido do Ancestor-Based MCTS"
   print_info "Raiz do projeto: $ROOT_DIR"
 
   architecture="$(detect_architecture)"

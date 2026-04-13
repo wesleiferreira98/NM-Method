@@ -85,7 +85,7 @@ start_frontend() {
 main() {
   trap stop_services EXIT INT TERM
 
-  print_header "Inicializador do NM-Method Poker"
+  print_header "Inicializador do Ancestor-Based MCTS"
   check_prerequisites
   start_backend
   start_frontend

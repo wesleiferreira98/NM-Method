@@ -3,15 +3,14 @@ from __future__ import annotations
 import json
 import time
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from kuhn_service import SimulationConfig, stream_kuhn, train_kuhn
-from paper_bridge import check_paper_availability, run_paper_mocfr, stream_paper_mocfr
+from mcts_service import SimulationConfig, run_mcts_comparison, stream_mcts_comparison
 
 
-app = FastAPI(title="NM Method Poker API", version="0.1.0")
+app = FastAPI(title="Ancestor-Based MCTS API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,61 +29,52 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/paper/status")
-def paper_status() -> dict:
-    availability = check_paper_availability()
-    return {
-        "available": availability.available,
-        "reason": availability.reason,
-    }
-
-
 @app.get("/api/simulate")
 def simulate(
-    iterations: int = Query(default=2000, ge=50, le=50000),
-    mu: float = Query(default=0.01, ge=0.0, le=1.0),
-    interval: int = Query(default=200, ge=1, le=10000),
+    matches: int = Query(default=80, ge=2, le=500),
+    simulations: int = Query(default=300, ge=10, le=5000),
+    c: float = Query(default=1.35, ge=0.0, le=5.0),
+    c_alpha_beta: float = Query(default=1.2, ge=0.0, le=5.0),
     seed: int = Query(default=42, ge=0, le=1_000_000),
-    mode: str = Query(default="paper", pattern="^(educational|paper)$"),
+    board_size: int = Query(default=5, ge=3, le=7),
+    win_length: int = Query(default=4, ge=3, le=7),
 ) -> dict:
     config = SimulationConfig(
-        iterations=iterations,
-        mu=mu,
-        interval=interval,
+        matches=matches,
+        simulations=simulations,
+        c=c,
+        c_alpha_beta=c_alpha_beta,
         seed=seed,
+        board_size=board_size,
+        win_length=win_length,
     )
-
-    if mode == "paper":
-        try:
-            return run_paper_mocfr(config)
-        except RuntimeError as error:
-            raise HTTPException(status_code=503, detail=str(error)) from error
-
-    result = train_kuhn(config)
-    result["source"] = "educational"
-    return result
+    return run_mcts_comparison(config)
 
 
 @app.get("/api/simulate/stream")
 def simulate_stream(
-    iterations: int = Query(default=2000, ge=50, le=50000),
-    mu: float = Query(default=0.01, ge=0.0, le=1.0),
-    interval: int = Query(default=200, ge=1, le=10000),
+    matches: int = Query(default=80, ge=2, le=500),
+    simulations: int = Query(default=300, ge=10, le=5000),
+    c: float = Query(default=1.35, ge=0.0, le=5.0),
+    c_alpha_beta: float = Query(default=1.2, ge=0.0, le=5.0),
     seed: int = Query(default=42, ge=0, le=1_000_000),
-    mode: str = Query(default="paper", pattern="^(educational|paper)$"),
+    board_size: int = Query(default=5, ge=3, le=7),
+    win_length: int = Query(default=4, ge=3, le=7),
     delay_ms: int = Query(default=120, ge=0, le=2000),
 ):
     config = SimulationConfig(
-        iterations=iterations,
-        mu=mu,
-        interval=interval,
+        matches=matches,
+        simulations=simulations,
+        c=c,
+        c_alpha_beta=c_alpha_beta,
         seed=seed,
+        board_size=board_size,
+        win_length=win_length,
     )
 
     def event_generator():
         try:
-            stream = stream_paper_mocfr(config) if mode == "paper" else stream_kuhn(config)
-            for snapshot in stream:
+            for snapshot in stream_mcts_comparison(config):
                 yield f"data: {json.dumps(snapshot)}\n\n"
                 if delay_ms > 0 and not snapshot.get("done", False):
                     time.sleep(delay_ms / 1000)

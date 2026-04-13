@@ -1,0 +1,516 @@
+2024 IEEE Conference on Games (CoG) | 979-8-3503-5067-8/24/$31.00 ©2024 IEEE | DOI: 10.1109/CoG60054.2024.10645672
+
+Ancestor-Based α-β Bounds for
+Monte-Carlo Tree Search
+Tom Pepels
+
+Mark H.M. Winands
+
+Department of Advanced Computing Sciences
+Maastricht University
+Maastricht, The Netherlands
+tom.pepels@maastrichtuniversity.nl
+
+Department of Advanced Computing Sciences
+Maastricht University
+Maastricht, The Netherlands
+m.winands@maastrichtuniversity.nl
+
+Abstract—Upper Confidence bounds applied to Trees (UCT)
+is the default selection policy in Monte-Carlo Tree Search
+(MCTS), yet it overlooks the strategic use of ancestral node
+information. Consequently, UCT approaches each decision level
+as an independent Multi-Armed Bandit problem, disregarding
+the results achieved along the path that led to the current state.
+Consequently, it treats decisions as separate in the tree, without
+integrating the historical context of previous choices. This paper
+introduces an enhancement to UCT for two-player, deterministic
+zero-sum games by integrating insights from α-β pruning—a
+method that increases minimax search efficiency through selective
+pruning. We propose a revised selection policy that leverages
+ancestor node data, mirroring α-β pruning’s principle, to refine sample-based search. Our experiments with this enhanced
+method reveal performance gains in Breakthrough, Mini Shogi,
+and GoMoku, highlighting the effectiveness of incorporating
+ancestor search results into the MCTS selection processes.
+Index Terms—MCTS, UCT, Monte-Carlo, Search, Games
+
+I. I NTRODUCTION
+
+MONTE-Carlo Tree Search (MCTS) plays a crucial
+role in AI for games, excelling in large sequential
+search spaces. Initially boosting computer Go from amateur to near-professional levels [1], [2], MCTS improved on
+minimax methods without needing game-specific heuristics.
+Combined with deep reinforcement learning, MCTS enabled
+breakthroughs such as AlphaGo [3] and has applications in
+video games [4], [5], general game-playing [6], and planning
+and optimization [7], [8].
+This paper introduces a selection policy for MCTS that integrates α (lower) and β (upper) bounds, akin to α−β pruning
+[9], within the Upper Confidence bounds for Trees (UCT) tree
+policy. This enhancement aims at improving strategic decision
+making by accounting for the path-dependent nature of game
+state progressions. We modify UCT to consider the numerical
+distance between these bounds, and we apply our revised
+algorithm to the following two-player zero-sum games: Amazons, Breakthrough, Mini Shogi, and GoMoku, to evaluate
+the effects of our changes. Although enhancing simulationbased algorithms with the α − β and minimax techniques
+has been proposed in earlier works [10], [11] our technique
+is unique in two ways. First, it does not require additional
+979-8-3503-5067-8/24/$31.00 ©2024 IEEE
+
+domain knowledge, yet it still leverages heuristics. Second, our
+method seamlessly incorporates into the standard MCTS/UCT
+framework, requiring minimal re-engineering without increasing computational or storage complexity.
+This paper is organized as follows. First, Section II presents
+an overview of MCTS. Next, Section III discusses the rationale
+for incorporating α and β bounds into the algorithm and
+explains how these bounds are integrated into UCT. Section IV
+presents the experimental results from testing on selected
+games, demonstrating the advantages of our method for AI
+game play. Finally, in Section V we present conclusions and
+an outlook for future research.
+II. M ONTE -C ARLO T REE S EARCH
+MCTS [1], [12] is a best-first search method used widely
+in game-playing, exploring state spaces by building statistical
+evidence for decisions. MCTS excels in large search spaces
+where full exploration is not feasible. As an iterative algorithm, its performance improves with additional search time.
+Each iteration in MCTS, known as a simulation, includes
+four distinct phases executed sequentially until the allocated
+computational resources are exhausted: Selection descends the
+tree from root to leaf or terminal state, selecting nodes by tree
+policy, Expansion adds new child nodes for unexplored states
+unless at a terminal state, Playout executes a random playout
+from the current state to a terminal state, obtaining payoffs,
+Backpropagation updates statistics of nodes along the path
+from leaf to root based on simulation outcomes.
+The tree policy, essential for balancing exploration and
+exploitation during the selection phase, generally relies on the
+UCT [12] formula. It is an adaptation of the UCB1 algorithm
+from multi-armed bandit (MAB) theory [13], designed to minimize cumulative regret over a series of independent decisions:
+s
+!
+Q(s, a)
+ln N (s)
+argmaxa
++C
+(1)
+N (s, a)
+N (s, a)
+Here, Q(s, a) represents the mean outcome of performing
+action a in state s, N (s, a) denotes the number of times action
+a has been sampled in state s, N (s) indicates the number of
+visits to state s, and C is a constant that manages the trade-off
+between exploration and exploitation.
+
+Authorized licensed use limited to: UNIVERSIDADE FEDERAL DA BAHIA. Downloaded on April 10,2026 at 19:02:04 UTC from IEEE Xplore. Restrictions apply.
+
+III. α-β B OUNDS FOR MCTS
+Our proposed enhancement is based on the notion that
+MCTS ultimately simplifies its decision-making process by
+treating each node as an isolated MAB, thus it neglects the current decision’s historical context. Because UCT only accounts
+for the immediate parent’s statistics, it misses insights from
+the decision path that led to the current state. Therefore, our
+proposal integrates ancestral information into UCT, enriching
+decisions with a path-dependent context and moving beyond
+the view of tree nodes as independent MAB challenges.
+Algorithm 1 α-β MCTS Selection
+1: while s is expanded do
+2:
+if maximizing then
+3:
+if α < V (s, a) − CB(s, a) then
+4:
+α = V (s, a) − CB(s, a)
+5:
+α− = −CB(s, a)
+6:
+end if
+7:
+s ← U CTαβ (s, α, β, α− , β+ )
+8:
+else if minimizing then
+9:
+if β > V (s, a) + CB(s, a) then
+10:
+β = V (s, a) + CB(s, a)
+11:
+β+ = CB(s, a)
+12:
+end if
+13:
+s ← U CTαβ (s, 1 − β, 1 − α, −β+ , −α− )
+14:
+end if
+15: end while
+q
+ln N (s)
+Q(s,a)
+,
+CB(s,
+a)
+=
+C
+V (s, a) = N
+αβ
+(s,a)
+N (s,a)
+The function U CTαβ is defined in subsection III-A, Eq. 4.
+
+Inspired by minimax, the technique incorporates ancestral
+bounds (α and β) into the MCTS selection phase. In contrast to
+minimax, it allows α and β to intersect, and the bounds are dynamically adjusted using UCT instead of having exact values
+based on cousin nodes. Although this technique diverges from
+the traditional α − β method, its goal in MCTS is consistent
+with that of minimax, using the values of other nodes to
+direct the search; therefore, we adopt the same terminology.
+Our approach enhances selection by incorporating path information and adjusting α and β, based on current evaluations
+and confidence bounds. This process dynamically refines the
+outcome predictions, leveraging path-led information to inform
+the selection strategy more accurately.
+During selection, before selecting the next node to explore,
+α and β, initially set to −∞ and ∞, respectively, are dynamically adjusted using the value function V (s, a) and confidence
+bounds CB(s, a), as detailed in Algorithm 1. α and β, as well
+as their corresponding lower and upper confidence bounds α−
+and β+ are revised, following these steps:
+1) If the current α is lower than the value of taking action a
+in state s minus the confidence bound, then α is updated
+to this new value, encapsulating the lower bound of the
+achievable score range. Furthermore, α− is set to the lower
+confidence bound of α.
+
+Fig. 1. An example illustrating α and β updates during MCTS selection.
+
+2) On minimizing plies, if β is greater than the value of action
+a plus the confidence bound, β is updated to reflect this
+upper limit of the score range for the maximizing player
+along the current path.
+3) The Cαβ constant is introduced in the CB function such
+that the size of the bounds for the α − β can be optimized
+separate from UCT’s C constant.
+4) The call to UCT selection is adapted by inverting α, β,
+α− , and β+ for the minimizing player. Such inversions are
+dependent on the range of rewards and averages. In the
+case shown in Algorithm 1, playout rewards and V (s, a)
+fall within a [0, 1] range for maximizing players.
+Figure 1 illustrates a selective descent through the MCTS
+tree from the root, highlighting only the chosen nodes at each
+ply. Initially, the nodes are chosen using standard UCT since
+the values of α and β are not yet defined. Starting from
+the third ply, selection is directed by UCTαβ , with α and
+β dynamically adjusted according to the nodes chosen up to
+that point. In a typical Breakthrough match, using 100,000
+simulations per move, UCTαβ accounts for 58% of selections
+for the first ten moves, rising to 94% as the match nears
+its end. The increase can be attributed to the more distinct
+separation between good and bad moves, as well as a decrease
+in the branching factor, enabling deeper search. In contrast, in
+Amazons on an 8 × 8 board with the same budget, UCTαβ
+starts influencing selections only after the first nine moves with
+45% of selections, and peaking at 78% by the twentieth move.
+The game’s large branching factor limiting the depth of search
+thus also limiting the use of UCTαβ .
+In a single simulation from the tree root to the leaf, the
+iterative adjustment of α and β, along with their bounds
+(α− and β+ ), progressively narrows these bounds towards
+more precise estimates. At the start of each simulation, α
+and β are reset, ensuring that they are derived solely from
+
+Authorized licensed use limited to: UNIVERSIDADE FEDERAL DA BAHIA. Downloaded on April 10,2026 at 19:02:04 UTC from IEEE Xplore. Restrictions apply.
+
+the current selection path. This systematically improves the
+accuracy of the bounds based on the accumulated simulation
+data. Although these values are not definitive upper and lower
+bounds due to incomplete exploration, they still offer valuable
+insight into the characteristics of the current path, such as its
+potential as the principal variation, its exploration frequency
+and whether the bounds have intersected.
+A. α-β Bounds for UCT
+The goal is to use α and β to enhance the UCT-driven
+selection process in MCTS, acknowledging two key scenarios:
+1) α < β indicating a path of exploitation where the algorithm
+focuses on promising paths identified earlier.
+2) α > β indicates deviation from the optimal path, signaling
+the need to explore possible better paths that have not been
+previously considered.
+This insight proposes a change to the UCT formula that
+dynamically modifies the trade-off between exploration and
+exploitation according to the conditions of α and β, particularly modifying the exploration component.
+δαβ = 1 − (β − α) · (1 − (β+ − α− )),
+
+(2)
+
+and
+2
+∆αβ = Cαβ
+· ln(δαβ · N (s)),
+
+(3)
+
+Given ∆αβ ̸= 0, the UCT formula is then modified as follows:
+s
+!
+∆αβ · ln N (s)
+Q(s, a)
++C
+(4)
+argmaxa
+N (s, a)
+N (s, a)
+The constant Cαβ in the CB function in Algorithm 1 is also
+used here to adjust the influence of ∆αβ on exploration.
+1) Formula 2 defines δαβ as a measure of the disparity
+between β and α, taking into consideration the interval
+between their limits to reflect uncertainty. This metric
+decreases as the uncertainty increases or as β and α
+converge, and turns negative when β < α, emulating
+minimax pruning. Note that β+ is strictly positive, while
+α− is negative, hence the overall effect is scaled relative
+to the certainty of α and β.
+2) Formula 3 adjusts UCT by incorporating ∆αβ , affecting
+exploration depending on the value of δαβ . The adjustment
+of the exploration term is further controlled by N (s),
+ensuring a stronger impact on well-explored nodes than
+on lesser-visited ones, thus requiring substantial evidence
+before altering the exploration strategy.
+3) When ∆αβ = 0, or β = −∞ and/or α = ∞ (indicating
+undefined bounds), the standard UCT selection formula 1
+is used. In all other cases, formula 4 is used.
+In summary, the U CTαβ approach aims to modulate search
+dynamics by tuning exploration based on the directions of the
+α and β bounds. Specifically, it adjusts the algorithm’s focus
+over time, changing the exploration/exploitation balance. Potentially guiding the search towards more promising areas by
+scaling exploration intensity according to the relative positions
+of α and β, based on the state’s ancestors.
+
+IV. E XPERIMENTS
+This section presents our experimental approach and results,
+comparing UCTαβ enhancement to standard UCT.
+A. Experimental Setup
+In our experiments, MCTSαβ is tested on four board games:
+Breakthrough, Amazons, Mini Shogi, and GoMoku, chosen for
+their unique game-play characteristics and search challenges.
+Breakthrough offers narrow winning lines; Amazons has a
+large branching factor; Mini Shogi involves condensed strategic play with endgame focus; GoMoku emphasizes strategic
+placement and creating winning patterns. These games provide
+a wide-ranging test of MCTSαβ ’s versatility and performance
+across different game dynamics. A pie rule is implemented to
+mitigate the first-player bias in Gomoku. All other games use
+a conventional rule-set.
+The experimental framework is implemented in Cython to
+take advantage of Python’s ease and C’s efficiency1 . Parameter
+tuning involved a broad initial exploration and a subsequent
+refinement phase to identify optimal settings per domain. The
+parameter Cαβ was tuned last and independently of all other
+parameters. For all domains, we observe that |C −Cαβ | ≤ 0.2.
+Our experimental setup includes the following enhancements:
+1) Implicit Minimax Backups: integrating minimax evaluations with MCTS backpropagation [14].
+2) Early Playout Termination: stopping playouts after a set
+number of moves, results given by state evaluation [15].
+3) Informed Playouts: a combination of heuristics and ϵgreedy best-move selection, to improve playout quality in
+Breakthrough, Gomoku, and Mini Shogi.
+To distinguish between the enhancements used in our experiments, all of which use early termination and informed
+playouts, we use the notation explained in Table I.
+TABLE I
+N OTATION USED IN EXPERIMENTS
+
+Notation
+
+Description
+
+MCTSαβ
+MCTSimm
+MCTS
+
+MCTS with U CTαβ
+MCTS with implicit minimax backups
+Standard MCTS and UCT
+
+To ensure fairness in our experiments, players alternate
+starting positions in half of the games. To introduce significant
+variability between matches, we employ an MCTS agent with
+a high exploration constant (C) to determine the first two
+moves. This agent conducts a 40-second search, and each
+player then chooses their first move from the top 40% of
+the options generated by the agent. For Gomoku, where there
+are 225 possible opening moves, this translates to about 90
+choices per player. Consequently, these selections can lead to
+around 8100 unique board configurations after the two initial
+moves, not accounting for rotational symmetry or potential
+overlaps. This exploratory set-up is also applied consistently
+across other games in our study. Following the initial moves,
+1 Framework available at: https://github.com/tpepels/mcts python
+
+Authorized licensed use limited to: UNIVERSIDADE FEDERAL DA BAHIA. Downloaded on April 10,2026 at 19:02:04 UTC from IEEE Xplore. Restrictions apply.
+
+TABLE II
+C OMBINED E XPERIMENTAL R ESULTS
+Game
+
+Simulation
+budget
+
+MCTSαβ,imm vs.
+MCTSimm
+
+MCTSαβ vs.
+MCTS
+
+Amazons (8 × 8)
+
+75,000
+150,000
+225,000
+
+Mean ± 95% c.i.
+
+Mean ± 95% c.i.
+
+50.99 ± 2.88
+48.63 ± 2.83
+50.71 ± 2.83
+
+52.08 ± 2.80
+48.67 ± 2.82
+53.34 ± 2.88
+
+Gomoku
+
+75,000
+150,000
+225,000
+
+52.69 ± 2.75
+54.91 ± 2.73
+53.57 ± 2.79
+
+50.88 ± 2.77
+49.69 ± 2.75
+51.16 ± 2.77
+
+Breakthrough
+
+75,000
+150,000
+225,000
+
+53.35 ± 3.07
+56.82 ± 3.04
+54.30 ± 3.02
+
+52.44 ± 3.03
+54.64 ± 3.08
+55.37 ± 3.07
+
+Mini Shogi
+
+25,000
+50,000
+75,000
+
+57.16 ± 3.05
+62.75 ± 2.99
+59.94 ± 3.15
+
+54.61 ± 2.99
+56.51 ± 3.07
+58.24 ± 2.97
+
+the games proceed with players continuing to use MCTS, and
+are allocated a fixed simulation budget for each move.”
+B. Experimental Results
+Table II presents the results of at least 1,000 matches per
+experiment, showing win rates for MCTSαβ with a 95%
+confidence interval across various computational budgets.
+The experimental results show variable performance impacts
+when applying MCTSαβ to different games. In Breakthrough
+and Mini Shogi, the use of MCTSαβ results in a statistically
+significant increase in win rates across all except one of
+the budgets tested. These games, which emphasize endgame
+strategy, demonstrate that enhanced UCT selection utilizing
+ancestral node data effectively improves performance in scenarios with a limited number of paths to victory.
+Conversely, in Amazons and Gomoku, while there are
+improvements in some cases, these are overall less substantial.
+Specifically, in Amazons, there appears to be a modest but
+significant performance improvement at the highest budget
+level. This suggests that the high initial branching factor in
+Amazons may limit the depth of search, thereby preventing
+the initialization of α and β (as outlined in Subsection III).
+In Gomoku, the experimental data indicate that without implicit minimax, the performance benefits of MCTSαβ are neither pronounced nor significant. However, although Gomoku
+shares a similar wide-to-narrow branching factor as Amazons,
+results shows that with adequate computational resources, it
+benefits from the combination of αβ, imm. This implies that
+implicit minimax is crucial in guiding the search towards
+promising paths and avoiding pitfalls. In this case, Gomoku’s
+performance improves significantly up to 54.91% with a
+sufficiently large computational budget. It is conceivable that
+dedicating additional computational resources could potentially lead to comparable enhancements in Amazons.
+V. C ONCLUSION AND F UTURE R ESEARCH
+Results indicate that the effectiveness of the MCTSαβ
+approach is related to the strategic depth of the domain and
+the size of its search space. Games such as Breakthrough
+
+and Minishogi, which call for accurate implementation of a
+smaller range of strategic moves, benefit significantly from
+enhancing UCT with α − β bounds derived from ancestor
+nodes. Traditional MCTS methods can struggle under these
+conditions because they average over many possible outcomes.
+Conversely, games such as Amazons and Gomoku, which
+begin with a multitude of potential strategies that are quite
+similar and depend on pattern formation, might see reduced
+advantages. Future investigations will determine whether this
+approach can improve performance in these areas while also
+boosting overall search efficiency relative to standard UCT. In
+addition, examining the theoretical guarantees of convergence
+will be a topic of future research.
+Acknowledgment: This research used the Dutch national einfrastructure with the support of the SURF Cooperative using
+grant no. EINF-6985.
+R EFERENCES
+[1] R. Coulom, “Efficient selectivity and backup operators in Monte-Carlo
+tree search,” in 5th International Conference on Computers and Games,
+ser. LNCS, H. J. van den Herik, P. Ciancarini, and H. H. L. M. Donkers,
+Eds., vol. 4630. Springer-Verlag, 2007, pp. 72–83.
+[2] S. Gelly, L. Kocsis et al., “The grand challenge of computer Go: Monte
+Carlo tree search and extensions,” Commun. ACM, vol. 55, no. 3, p.
+106–113, mar 2012.
+[3] D. Silver, A. Huang et al., “Mastering the game of Go with deep neural
+networks and tree search,” Nature, vol. 529, no. 7587, pp. 484–489,
+2016.
+[4] T. Pepels, M. H. M. Winands, and M. Lanctot, “Real-time monte carlo
+tree search in Ms Pac-Man,” IEEE Transactions on Computational
+Intelligence and AI in Games, vol. 6, no. 3, pp. 245–257, 2014.
+[5] D. J. N. J. Soemers, C. F. Sironi, T. Schuster, and M. H. M. Winands,
+“Enhancements for real-time monte-carlo tree search in general video
+game playing,” in 2016 IEEE Conference on Computational Intelligence
+and Games (CIG), 2016, pp. 1–8.
+[6] H. Finnsson and Y. Björnsson, “Learning simulation control in general
+game playing agents,” in Twenty-Fourth AAAI Conference on Artificial
+Intelligence, 2010, pp. 954–959.
+[7] C. B. Browne, E. Powley et al., “A survey of Monte Carlo tree search
+methods,” IEEE Transactions on Computational Intelligence and AI in
+Games, vol. 4, no. 1, pp. 1–43, 2012.
+[8] M. Świechowski, K. Godlewski, B. Sawicki, and J. Mańdziuk, “Monte
+carlo tree search: a review of recent modifications and applications,”
+Artificial Intelligence Review, vol. 56, no. 3, pp. 2497–2562, 2023.
+[9] D. Knuth and R. Moore, “An analysis of alpha-beta pruning,” Artificial
+Intelligence, vol. 6, no. 4, pp. 293–326, 1975.
+[10] H. Baier and M. H. M. Winands, “MCTS-minimax hybrids with state
+evaluations,” Journal of Artificial Intelligence Research, vol. 62, pp.
+193–231, 2018.
+[11] B. Huang, “Pruning game tree by rollouts,” Proceedings of the AAAI
+Conference on Artificial Intelligence, vol. 29, no. 1, Feb. 2015.
+[12] L. Kocsis and C. Szepesvári, “Bandit-based Monte Carlo planning,”
+in 15th European Conference on Machine Learning, ser. LNCS,
+J. Fürnkranz, T. Scheffer, and M. Spiliopoulou, Eds., vol. 4212.
+Springer-Verlag, 2006, pp. 282–293.
+[13] P. Auer, N. Cesa-Bianchi, and P. Fischer, “Finite-time analysis of the
+multiarmed bandit problem,” Machine Learning, vol. 47, no. 2-3, pp.
+235–256, 2002.
+[14] M. Lanctot, M. H. M. Winands, T. Pepels, and N. R. Sturtevant, “Monte
+carlo tree search with heuristic evaluations using implicit minimax
+backups,” in 2014 IEEE Conference on Computational Intelligence and
+Games. IEEE, 2014, pp. 1–8.
+[15] R. Lorentz, “Amazons discover Monte-Carlo,” in Proceedings of the 6th
+International Conference on Computers and Games (CG), ser. LNCS,
+vol. 5131, 2008, pp. 13–24.
+
+Authorized licensed use limited to: UNIVERSIDADE FEDERAL DA BAHIA. Downloaded on April 10,2026 at 19:02:04 UTC from IEEE Xplore. Restrictions apply.
+
+

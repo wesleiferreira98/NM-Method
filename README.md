@@ -1,84 +1,30 @@
-# Negative Momentum Method
+# Ancestor-Based alpha-beta Bounds for MCTS
 
-## Documentação em pt-BR
+Este repositório agora contém um ambiente visual para executar e comparar `UCTαβ` contra `UCT`, inspirado no artigo “Ancestor-Based α-β Bounds for Monte-Carlo Tree Search”.
 
-Este repositório é um fork/adaptação de um projeto associado ao artigo aceito na AAAI 2025: [Rapid Learning in Constrained Minimax Games with Negative Momentum](https://arxiv.org/abs/2501.00533). O objetivo do código é explorar métodos de aprendizado rápido em jogos minimax com restrições, com ênfase em técnicas baseadas em momento negativo.
+A aplicação usa um Mini Gomoku determinístico como domínio leve de teste. Em cada partida, um agente usa seleção `UCTαβ` e o outro usa `UCT` padrão. O ambiente alterna quem começa, executa um orçamento fixo de simulações por lance e mostra o score acumulado ao longo dos checkpoints.
 
-O projeto reúne implementações e experimentos voltados para jogos de soma zero, especialmente jogos sequenciais com informação imperfeita, como Kuhn Poker e Leduc Poker. A base experimental usa algoritmos de regret minimization e métodos em forma sequencial para avaliar convergência e exploitability.
+Para reduzir o ruído dos rollouts aleatórios, ambos os métodos usam a mesma camada tática: jogadas vencedoras imediatas são executadas, ameaças imediatas são bloqueadas e os playouts preferem casas mais centrais. Isso não altera o placar a favor de um método específico, mas dá valores mais estáveis para que os limites ancestrais do `UCTαβ` sejam úteis.
 
-### Principais componentes
+## Componentes principais
 
-- `NM-Method/MoCFR.py`: implementação modificada de CFR/CFR+, incorporando uma ideia de momento negativo no acúmulo de arrependimentos.
-- `NM-Method/CFR_run.py`: script de execução para experimentos com CFR/MoCFR usando OpenSpiel.
-- `NM-Method/sequence_form_run.py`: script principal para experimentos em forma sequencial, com variantes como MMD, OMWU, OGDA, GDA, MoMMWU e MoGDA.
-- `NM-Method/sequence_form_utils.py`: utilitários para construção e conversão de representações em forma sequencial.
-- `NM-Method/sequence_form_algo/`: implementações dos algoritmos em forma sequencial.
-- `NM-Method/kuhnEx.py`: experimento autocontido com Kuhn Poker expandido.
-- `NM-Method/leduc_exp.py`: experimento autocontido com uma versão simplificada de Leduc Poker.
-- `NM-Method/mini_mocfr.py` e `NM-Method/mini_mocfr_two_players.py`: exemplos menores para estudar o comportamento do MoCFR em cenários simples.
+- `apps/backend/mcts_service.py`: motor local de MCTS, Mini Gomoku, seleção `UCT`, seleção `UCTαβ`, partidas pareadas e snapshots de comparação.
+- `apps/backend/main.py`: API FastAPI com rotas HTTP e streaming via Server-Sent Events.
+- `apps/frontend/src/main.jsx`: interface React para configurar a comparação, visualizar score, tabuleiro final e últimos lances.
+- `apps/frontend/src/styles.css`: estilos da interface visual.
+- `article.txt`: texto do artigo usado como referência para esta adaptação.
+- `NM-Method/`: scripts legados do projeto anterior de Negative Momentum/CFR, mantidos como material separado de pesquisa.
 
-### Aplicação visual separada
+## Como executar
 
-Além dos arquivos de pesquisa, o repositório inclui uma aplicação separada em `apps/`:
-
-- `apps/backend/`: API em Python/FastAPI para simular Kuhn Poker com CFR e momento negativo.
-- `apps/frontend/`: interface React/Vite para visualizar cartas, parâmetros de treinamento, curva de exploitability e estratégia aprendida.
-
-Essa separação evita misturar a camada de produto com os arquivos originais da solução do paper. A aplicação visual usa por padrão o modo `Paper fork`, que chama `NM-Method/MoCFR.py` por meio de `apps/backend/paper_bridge.py`, sem alterar os arquivos originais de pesquisa. O modo didático continua disponível e usa a adaptação `NM-Method/Kuhn_Poker_CFR-style_MoCFR.py` por meio de `apps/backend/kuhn_service.py`.
-
-### Dependências
-
-O projeto usa Python e depende de bibliotecas científicas e de experimentação, incluindo:
-
-- `numpy`
-- `scipy`
-- `matplotlib`
-- `absl-py`
-- `open_spiel` / `pyspiel`
-- `wandb`, quando o rastreamento de experimentos estiver habilitado
-
-Observação: o arquivo `NM-Method/requirements.txt` foi ajustado para usar versões instaláveis via PyPI, evitando referências a wheels locais de Termux/Android.
-
-Para Debian ARM64 rodando dentro do Termux no Android, use `NM-Method/requirements-arm64.txt`. Esse arquivo evita wheels locais e usa `uvicorn` sem o extra `standard`, reduzindo a chance de falhas com dependências nativas em ambientes `proot`.
-
-### Execução
-
-Alguns scripts podem ser executados diretamente, dependendo das dependências disponíveis no ambiente.
-
-Exemplo com experimento simplificado:
-
-```bash
-python3 NM-Method/mini_mocfr.py
-```
-
-Exemplo com Kuhn Poker expandido:
-
-```bash
-python3 NM-Method/kuhnEx.py
-```
-
-Exemplo com métodos em forma sequencial usando OpenSpiel:
-
-```bash
-python3 NM-Method/sequence_form_run.py --iterations=10000 --print_freq=10
-```
-
-Exemplo com MoCFR usando OpenSpiel:
-
-```bash
-python3 NM-Method/CFR_run.py
-```
-
-Exemplo com a aplicação visual separada:
+Instalação assistida:
 
 ```bash
 ./install.sh
 ./start.sh
 ```
 
-Em ARM64/Termux-Debian, o instalador detecta a arquitetura e oferece o uso de `requirements-arm64.txt`.
-
-Se preferir iniciar os serviços manualmente, execute o backend:
+Execução manual do backend:
 
 ```bash
 source .venv/bin/activate
@@ -86,114 +32,70 @@ cd apps/backend
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-E, em outro terminal, execute o frontend:
+Execução manual do frontend:
 
 ```bash
 cd apps/frontend
 npm run dev
 ```
 
-Para registrar métricas no Weights & Biases, use a flag `--use_wandb=True` nos scripts que oferecem esse suporte e configure o projeto com `--project_name`.
+O frontend roda em `http://127.0.0.1:5173` e encaminha chamadas `/api` para `http://127.0.0.1:8000`.
 
-### Estado do projeto
+## API
 
-Este repositório tem caráter experimental. Alguns arquivos são scripts de pesquisa, com parâmetros fixados diretamente no código e alternativas comentadas para outros jogos. O arquivo `NM-Method/Reg_method.py` referencia dependências que podem não estar presentes neste repositório, como `LiteEFG` e módulos `*_moving`, portanto esse script pode exigir código externo ou ajustes adicionais para execução.
+- `GET /api/health`
+- `GET /api/simulate`
+- `GET /api/simulate/stream`
 
-## English Documentation
+Parâmetros aceitos em `/api/simulate` e `/api/simulate/stream`:
 
-This repository is a fork/adaptation of a project associated with the AAAI 2025 accepted paper: [Rapid Learning in Constrained Minimax Games with Negative Momentum](https://arxiv.org/abs/2501.00533). The code explores rapid learning methods for constrained minimax games, with an emphasis on negative momentum techniques.
+- `matches`: quantidade de partidas.
+- `simulations`: simulações de MCTS por lance.
+- `c`: constante de exploração do UCT.
+- `c_alpha_beta`: constante usada no ajuste dos limites α-β.
+- `seed`: semente do experimento.
+- `board_size`: tamanho do tabuleiro, de `3` a `7`.
+- `win_length`: quantidade em linha para vencer, de `3` a `7`.
+- `delay_ms`: atraso artificial entre checkpoints, apenas no streaming.
 
-The project contains implementations and experiments for zero-sum games, especially sequential imperfect-information games such as Kuhn Poker and Leduc Poker. The experimental code combines regret minimization algorithms and sequence-form methods to evaluate convergence and exploitability.
-
-### Main Components
-
-- `NM-Method/MoCFR.py`: modified CFR/CFR+ implementation that incorporates a negative momentum idea into regret accumulation.
-- `NM-Method/CFR_run.py`: runner script for CFR/MoCFR experiments using OpenSpiel.
-- `NM-Method/sequence_form_run.py`: main runner for sequence-form experiments, including variants such as MMD, OMWU, OGDA, GDA, MoMMWU, and MoGDA.
-- `NM-Method/sequence_form_utils.py`: utilities for constructing and converting sequence-form representations.
-- `NM-Method/sequence_form_algo/`: implementations of the sequence-form algorithms.
-- `NM-Method/kuhnEx.py`: self-contained experiment for expanded Kuhn Poker.
-- `NM-Method/leduc_exp.py`: self-contained experiment for a simplified Leduc Poker setting.
-- `NM-Method/mini_mocfr.py` and `NM-Method/mini_mocfr_two_players.py`: smaller examples for studying MoCFR behavior in simple settings.
-
-### Separate Visual Application
-
-In addition to the research files, the repository includes a separate application under `apps/`:
-
-- `apps/backend/`: Python/FastAPI API for simulating Kuhn Poker with CFR and negative momentum.
-- `apps/frontend/`: React/Vite interface for visualizing cards, training parameters, the exploitability curve, and the learned strategy.
-
-This separation avoids mixing the product layer with the original paper solution files. By default, the visual application uses the `Paper fork` mode, which calls `NM-Method/MoCFR.py` through `apps/backend/paper_bridge.py`, without modifying the original research files. The educational mode remains available and uses the `NM-Method/Kuhn_Poker_CFR-style_MoCFR.py` adaptation through `apps/backend/kuhn_service.py`.
-
-### Dependencies
-
-The project uses Python and depends on scientific computing and experimentation libraries, including:
-
-- `numpy`
-- `scipy`
-- `matplotlib`
-- `absl-py`
-- `open_spiel` / `pyspiel`
-- `wandb`, when experiment tracking is enabled
-
-Note: `NM-Method/requirements.txt` was adjusted to use PyPI-installable versions, avoiding references to local Termux/Android wheel files.
-
-For Debian ARM64 running inside Termux on Android, use `NM-Method/requirements-arm64.txt`. This file avoids local wheels and uses `uvicorn` without the `standard` extra, reducing the chance of native dependency failures in `proot` environments.
-
-### Running
-
-Some scripts can be executed directly, depending on the dependencies available in the environment.
-
-Simplified experiment:
+Exemplo:
 
 ```bash
-python3 NM-Method/mini_mocfr.py
+curl "http://127.0.0.1:8000/api/simulate?matches=40&simulations=200&c=1.35&c_alpha_beta=1.2&seed=42"
 ```
 
-Expanded Kuhn Poker experiment:
+## Métrica
 
-```bash
-python3 NM-Method/kuhnEx.py
-```
+O score de `UCTαβ` usa:
 
-Sequence-form methods using OpenSpiel:
+- vitória: `1`
+- empate: `0.5`
+- derrota: `0`
 
-```bash
-python3 NM-Method/sequence_form_run.py --iterations=10000 --print_freq=10
-```
+O score de `UCT` é o complemento no mesmo conjunto de partidas. A interface mostra o método vencedor pelo maior score acumulado.
 
-MoCFR using OpenSpiel:
+## Complexidade
 
-```bash
-python3 NM-Method/CFR_run.py
-```
+Use a seguinte notação:
 
-Separate visual application:
+- `S`: simulações de MCTS por lance.
+- `d`: profundidade média percorrida por simulação.
+- `b`: quantidade média de filhos examinados ao escolher um filho, já que a implementação usa `max(...)` sobre os filhos do nó.
+- `T`: quantidade de nós armazenados na árvore de busca de um lance.
+- `M`: quantidade de partidas.
+- `L`: quantidade média de lances por partida.
 
-```bash
-./install.sh
-./start.sh
-```
+Por lance:
 
-On ARM64/Termux-Debian, the installer detects the architecture and offers `requirements-arm64.txt`.
+| Método | Tempo | Espaço |
+| --- | --- | --- |
+| `UCT` | `O(S · d · b)` | `O(T)` |
+| `UCTαβ` | `O(S · d · b)` | `O(T) + O(1)` por simulação |
 
-If you prefer to start the services manually, run the backend:
+Na prática, `UCTαβ` mantém a mesma ordem assintótica do `UCT`, mas adiciona custo constante na seleção: atualização dos limites `α`, `β`, `α−`, `β+` e cálculo de `δαβ`/`∆αβ`. Como esses valores são carregados durante a descida e não armazenados em cada nó, o espaço extra é constante por simulação.
 
-```bash
-source .venv/bin/activate
-cd apps/backend
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
-```
+Para uma comparação completa com `M` partidas e `L` lances médios por partida, o tempo fica `O(M · L · S · d · b)` para ambos. O espaço máximo continua sendo o da árvore de um lance, `O(T)`, porque a árvore é recriada a cada decisão.
 
-Then, in another terminal, run the frontend:
+## Observação
 
-```bash
-cd apps/frontend
-npm run dev
-```
-
-To log metrics to Weights & Biases, use the `--use_wandb=True` flag in scripts that support it and configure the project with `--project_name`.
-
-### Project Status
-
-This repository is experimental. Some files are research scripts, with parameters hardcoded directly in the source and commented alternatives for other games. The `NM-Method/Reg_method.py` file references dependencies that may not be present in this repository, such as `LiteEFG` and `*_moving` modules, so that script may require external code or additional adjustments before it can run.
+A implementação em `apps/backend/mcts_service.py` é uma adaptação prática para experimentação local. Ela segue a ideia do artigo de usar limites ancestrais α e β para modular a exploração durante a seleção MCTS, mas não tenta reproduzir exatamente o framework experimental em Cython usado pelos autores.
